@@ -3,15 +3,18 @@ package io.github.kaltrinabajramii.urbantransitbackend.repository;
 import io.github.kaltrinabajramii.urbantransitbackend.model.entity.User;
 import io.github.kaltrinabajramii.urbantransitbackend.model.enums.UserRole;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 
-import java.awt.print.Pageable;
 import java.util.List;
 import java.util.Optional;
 
-public interface UserRepository extends JpaRepository< User,Long> {
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+
     // ===== AUTHENTICATION (Required for JWT login) =====
 
     /**
@@ -29,7 +32,7 @@ public interface UserRepository extends JpaRepository< User,Long> {
     /**
      * Find users by role - used for admin user management
      */
-    List <User> findByRole(UserRole role);
+    List<User> findByRole(UserRole role);
 
     /**
      * Find active users with pagination - used for admin user list
@@ -37,15 +40,15 @@ public interface UserRepository extends JpaRepository< User,Long> {
     Page<User> findByActiveTrue(Pageable pageable);
 
     /**
-     * Search users by name or email - used for admin user search
+     * Search active users by name or email - used for admin user search
      */
     @Query("SELECT u FROM User u WHERE u.active = true AND " +
             "(LOWER(u.fullName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
             "LOWER(u.email) LIKE LOWER(CONCAT('%', :searchTerm, '%'))) " +
             "ORDER BY u.createdAt DESC")
-    Page <User> searchActiveUsers(@Param ("searchTerm") String searchTerm, Pageable pageable);
+    Page<User> searchActiveUsers(@Param("searchTerm") String searchTerm, Pageable pageable);
 
-    // ===== ANALYTICS (Required for dashboard) =====
+    // ===== ANALYTICS (Required for marketing dashboard) =====
 
     /**
      * Find users without tickets - used for marketing analytics
@@ -53,4 +56,16 @@ public interface UserRepository extends JpaRepository< User,Long> {
     @Query("SELECT u FROM User u WHERE u.active = true AND " +
             "NOT EXISTS (SELECT t FROM Ticket t WHERE t.user = u)")
     Page<User> findUsersWithoutTickets(Pageable pageable);
+
+    /**
+     * Count users by role - used for admin dashboard
+     */
+    @Query("SELECT u.role, COUNT(u) FROM User u WHERE u.active = true GROUP BY u.role")
+    List<Object[]> countUsersByRole();
+
+    /**
+     * Find recently registered users - used for admin dashboard
+     */
+    @Query("SELECT u FROM User u WHERE u.active = true ORDER BY u.createdAt DESC")
+    Page<User> findRecentlyRegisteredUsers(Pageable pageable);
 }
