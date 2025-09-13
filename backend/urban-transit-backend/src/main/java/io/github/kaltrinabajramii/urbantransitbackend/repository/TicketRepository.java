@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -120,8 +121,8 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
      * Calculate total revenue by date range - used for revenue analytics
      */
     @Query("SELECT SUM(t.price) FROM Ticket t WHERE t.purchaseDate BETWEEN :startDate AND :endDate")
-    Optional<Double> calculateRevenueByDateRange(@Param("startDate") LocalDateTime startDate,
-                                                 @Param("endDate") LocalDateTime endDate);
+    Optional< BigDecimal > calculateRevenueByDateRange(@Param("startDate") LocalDateTime startDate,
+                                                       @Param("endDate") LocalDateTime endDate);
 
     /**
      * Find top purchasing users - used for customer analytics
@@ -130,4 +131,8 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
             "GROUP BY t.user " +
             "ORDER BY COUNT(t) DESC")
     Page<Object[]> findTopPurchasingUsers(Pageable pageable);
+
+    Page< Ticket> findByUserAndTicketTypeAndStatusOrderByPurchaseDateDesc(User user, TicketType ticketType, TicketStatus status, Pageable pageable);
+
+    Long countByStatus(TicketStatus ticketStatus);
 }
