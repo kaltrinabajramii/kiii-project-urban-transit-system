@@ -1,0 +1,79 @@
+version: "3.9"
+
+services:
+  # PostgreSQL Database Service
+  db:
+    image: postgres:16
+    container_name: urban_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: urban_transit
+    volumes:
+      # Persist database data across container restarts
+      - db_data:/var/lib/postgresql/data
+    ports:
+      # Expose PostgreSQL port for local development access
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d urban_transit"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Spring Boot Backend Service
+  backend:
+    build: ./backend/urban-transit-backend
+    container_name: urban_backend
+    environment:
+      # Override application.properties defaults with Docker-specific values
+      DATABASE_URL: jdbc:postgresql://db:5432/urban_transit
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: postgres
+      DDL_AUTO: update
+      SHOW_SQL: true
+      # JWT configuration
+      JWT_SECRET: urbanTransitSecretKeyThatIsLongEnoughForHS256AlgorithmAndMustBeSecure2024
+      JWT_EXPIRATION: 86400000
+      # CORS configuration for frontend
+      ALLOWED_ORIGINS: http://localhost:3000,http://localhost:5173
+      # Logging configuration
+      LOG_LEVEL: INFO
+      SECURITY_LOG_LEVEL: WARN
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      # Expose Spring Boot application port
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # React Frontend Service
+  frontend:
+    build: ./frontend/urban-transit-frontend
+    container_name: urban_frontend
+    ports:
+      # Map host port 3000 to container port 80 (nginx)
+      - "3000:80"
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# Named volumes for data persistence
+volumes:
+  db_data:
+    driver: local
+
+# Optional: Custom networks for better service isolation
+networks:
+  default:
+    name: urban_transit_network
